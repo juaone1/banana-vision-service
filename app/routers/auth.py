@@ -1,7 +1,8 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from app.schemas.user import User, UserRegister
+from app.schemas.user import User, UserRegister, TokenWithRefresh, RefreshTokenRequest
 from app.core.config import settings
 from app.core.supabase import supabase, supabase_admin
 
@@ -70,7 +71,7 @@ async def register(user_data: UserRegister) -> User:
             detail=str(e)
         )
 
-@router.post("/login")
+@router.post("/login", response_model=TokenWithRefresh)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     print(f"Login attempt for user: {form_data.username}")
     try:
@@ -85,10 +86,42 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             raise ValueError("Authentication failed - no session")
         
         print(f"Login successful for {form_data.username}")
-        return {
+        # return {
+        #     "access_token": auth_response.session.access_token,
+        #     "refresh_token": auth_response.session.refresh_token,
+        #     "token_type": "bearer"
+        # }
+
+        response = JSONResponse({
+            "message": "Login successful",
             "access_token": auth_response.session.access_token,
-            "token_type": "bearer"
-        }
+            "refresh_token": auth_response.session.refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "id": auth_response.user.id,
+                "email": auth_response.user.email
+            }
+        })
+        
+        response.set_cookie(
+            key="access_token",
+            value=auth_response.session.access_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=3600
+        )
+        
+        response.set_cookie(
+            key="refresh_token",
+            value=auth_response.session.refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=604800
+        )
+
+        return response
     except Exception as e:
         print(f"Login error: {str(e)}")
         # Check for common Supabase error messages and provide better responses
@@ -109,5 +142,69 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Authentication error: {str(e)}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+@router.post("/refresh", response_model=TokenWithRefresh)
+async def refresh_token(request: Request):
+    print(f"Refresh token attempt")
+    try:
+        # Get refresh token from cookie
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            raise HTTPException(status_code=401, detail="No refresh token")
+            
+        auth_response = supabase.auth.refresh_session(refresh_token)
+        
+        response = JSONResponse({
+            "message": "Token refreshed",
+            "access_token": auth_response.session.access_token,
+            "refresh_token": auth_response.session.refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "id": auth_response.user.id,
+                "email": auth_response.user.email
+            }
+        })
+        
+        # Set new cookies
+        response.set_cookie(
+            key="access_token",
+            value=auth_response.session.access_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=3600
+        )
+        
+        response.set_cookie(
+            key="refresh_token",
+            value=auth_response.session.refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            max_age=604800
+        )
+        
+        return response
+    except Exception as e:
+        print(f"Refresh token error: {str(e)}")
+        error_msg = str(e).lower()
+        if "invalid refresh token" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        elif "token expired" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Token refresh failed: {str(e)}",
                 headers={"WWW-Authenticate": "Bearer"},
             ) 
