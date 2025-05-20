@@ -19,7 +19,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3600","https://banana-vision-app.vercel.app", "https://raspi.bananavisionml.org"], 
+    allow_origins=["http://localhost:3600","https://banana-vision-app.vercel.app", "https://raspi.bananavisionml.org", "http://192.168.100.91:3600", "http://192.168.127.239:3600"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
