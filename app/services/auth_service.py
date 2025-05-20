@@ -53,7 +53,8 @@ async def create_profile(user_id: str, user_data: Dict[str, Any]) -> None:
         data = {
             'id': user_id,
             'email': user_data['email'],
-            'full_name': user_data['full_name'],
+            'first_name': user_data['first_name'],
+            'last_name': user_data['last_name'],
             'role': user_data['role']
         }
         
@@ -82,7 +83,8 @@ async def register_user(user_data: UserRegister) -> User:
             "password": user_data.password,
             "options": {
                 "data": {
-                    "full_name": user_data.full_name,
+                    "first_name": user_data.first_name,
+                    "last_name": user_data.last_name,
                     "role": user_data.role
                 }
             }
@@ -96,13 +98,15 @@ async def register_user(user_data: UserRegister) -> User:
         await create_profile(auth_response.user.id,
                         user_data={
                     "email": user_data.email,
-                    "full_name": user_data.full_name,
+                    "first_name": user_data.first_name,
+                    "last_name": user_data.last_name,
                     "role": user_data.role
                 })
         return User(
             id=auth_response.user.id,
             email=auth_response.user.email,
-            full_name=user_data.full_name,
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
             role=user_data.role,
             is_active=True,
             created_at=auth_response.user.created_at,
@@ -122,6 +126,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm) -> JSONResponse:
         })
         if not auth_response.session or not auth_response.session.access_token:
             raise ValueError("Authentication failed - no session")
+        print("Auth response: ", auth_response)
         response = JSONResponse({
             "message": "Login successful",
             "access_token": auth_response.session.access_token,
@@ -129,7 +134,10 @@ async def login_user(form_data: OAuth2PasswordRequestForm) -> JSONResponse:
             "token_type": "bearer",
             "user": {
                 "id": auth_response.user.id,
-                "email": auth_response.user.email
+                "email": auth_response.user.email,
+                "first_name": auth_response.user.user_metadata.get("first_name", ""),
+                "last_name": auth_response.user.user_metadata.get("last_name", ""),
+                "role": auth_response.user.user_metadata.get("role", "farmer")
             }
         })
         response.set_cookie(
@@ -203,7 +211,8 @@ async def refresh_user_token(request: Request) -> JSONResponse:
             "user": {
                 "id": auth_response.user.id,
                 "email": auth_response.user.email,
-                "full_name": auth_response.user.user_metadata.get("full_name", ""),
+                "first_name": auth_response.user.user_metadata.get("first_name", ""),
+                "last_name": auth_response.user.user_metadata.get("last_name", ""),
                 "role": auth_response.user.user_metadata.get("role", "farmer")
             }
         })
