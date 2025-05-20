@@ -11,7 +11,8 @@ class UserBase(BaseModel):
 class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
-    full_name: str
+    first_name: str
+    last_name: str
     role: str = Field(..., pattern="^(admin|farmer)$")
 
 class UserUpdate(BaseModel):
@@ -23,7 +24,8 @@ class UserUpdate(BaseModel):
 class User(BaseModel):
     id: UUID
     email: EmailStr
-    full_name: str
+    first_name: str
+    last_name: str
     role: str
     is_active: bool = True
     created_at: datetime
