@@ -2,6 +2,7 @@ from typing import List
 from app.core.supabase import supabase, supabase_admin
 from app.core.logging import get_logger
 from app.schemas.inference_result import InferenceResultOut
+from uuid import UUID
 import os
 logger = get_logger('inference_result_service')
 
@@ -34,6 +35,31 @@ async def get_inference_results(limit: int = 20, offset: int = 0) -> Dict[str, A
     except Exception as exc:
         logger.error(f"Exception in get_inference_results: {exc}")
         return {"data": [], "total": 0, "has_error": True, "error": str(exc)}
+
+
+async def delete_inference_result(id: UUID) -> dict:
+    """
+    Delete an inference result row by its UUID.
+    Returns a dict with operation result and error info.
+    """
+    try:
+        response = (
+            supabase_admin
+            .table("inference_results")
+            .delete()
+            .eq("id", str(id))
+            .execute()
+        )
+        logger.info(f"Delete response: {response}")
+        if hasattr(response, 'error') and response.error:
+            logger.error(f"Supabase error: {response.error}")
+            return {"success": False, "has_error": True, "error": str(response.error)}
+        if (hasattr(response, 'data') and response.data) or (isinstance(response, dict) and response.get("data")):
+            return {"success": True, "has_error": False, "error": None}
+        return {"success": False, "has_error": True, "error": "No row deleted"}
+    except Exception as exc:
+        logger.error(f"Exception in delete_inference_result: {exc}")
+        return {"success": False, "has_error": True, "error": str(exc)}
 
 
 async def get_tree_stats(tree_type: str = "Healthy") -> Dict[str, Any]:
