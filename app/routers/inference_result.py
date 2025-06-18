@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from app.schemas.inference_result import InferenceResultOut
-from app.services.inference_result_service import get_inference_results
+from app.services.inference_result_service import get_inference_results, delete_inference_result
 
 router = APIRouter(prefix="/inference-results", tags=["inference_results"])
 
