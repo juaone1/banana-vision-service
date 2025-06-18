@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, inference_result, dashboard
+from app.routers import auth, inference_result, dashboard, user_routes
 from app.core.config import settings
 
 
@@ -40,6 +40,11 @@ app.include_router(
     dashboard.router,
     prefix=api_prefix,
     tags=["dashboard"]
+)
+app.include_router(
+    user_routes.router,
+    prefix=api_prefix,
+    tags=["users"]
 )
 
 @app.get("/")
