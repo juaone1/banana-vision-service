@@ -21,3 +21,15 @@ async def list_inference_results(
     if result["has_error"]:
         raise HTTPException(status_code=500, detail=result["error"])
     return result
+
+from uuid import UUID
+
+@router.delete("/{id}", response_model=Dict[str, Any])
+async def delete_inference_result_endpoint(id: UUID) -> Dict[str, Any]:
+    """
+    Delete an inference result by its UUID.
+    """
+    result = await delete_inference_result(id)
+    if result["has_error"]:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
